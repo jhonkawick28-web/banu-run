@@ -2,34 +2,43 @@
 <html>
 
 <head>
-    <title>Custom Dino Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhanu Run</title>
+
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: #f7f7f7;
             font-family: Arial, sans-serif;
+            touch-action: manipulation;
+        }
+
+        #gameTitle {
+            text-align: center;
+            font-size: 30px;
+            font-weight: bold;
+            margin-top: 10px;
+            letter-spacing: 2px;
         }
 
         canvas {
             display: block;
-            margin: auto;
-            background: white;
         }
 
         #score {
             position: absolute;
-            top: 20px;
+            top: 15px;
             right: 20px;
-            font-size: 20px;
+            font-size: 18px;
         }
 
         #gameOver {
             position: absolute;
             width: 100%;
             text-align: center;
-            top: 150px;
-            font-size: 30px;
+            top: 45%;
+            font-size: 24px;
             display: none;
         }
     </style>
@@ -37,91 +46,103 @@
 
 <body>
 
+    <h1 id="gameTitle">Bhanu Run</h1>
     <div id="score">Score: 0</div>
-    <div id="gameOver">Game Over! Press R to Restart</div>
-    <canvas id="gameCanvas" width="900" height="300"></canvas>
+    <div id="gameOver">Game Over<br>Tap or Press R to Restart</div>
+    <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // Load Images
+        // Responsive canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight * 0.5;
+        }
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+
+        // Load images
         const dinoImg = new Image();
         dinoImg.src = "dino.png";
 
         const obstacleImg = new Image();
         obstacleImg.src = "cactus.png";
 
-        // Load Sounds
+        // Sounds
         const jumpSound = new Audio("jump.wav");
         const hitSound = new Audio("hit.wav");
-
         jumpSound.volume = 0.5;
         hitSound.volume = 0.5;
 
-        let imagesLoaded = 0;
-
-        // Wait for images to load
-        dinoImg.onload = imageLoaded;
-        obstacleImg.onload = imageLoaded;
-
-        function imageLoaded() {
-            imagesLoaded++;
-            if (imagesLoaded === 2) {
-                gameLoop();
-            }
+        let groundY;
+        function updateGround() {
+            groundY = canvas.height - 40;
         }
+        updateGround();
+        window.addEventListener("resize", updateGround);
 
         let dino = {
-            x: 50,
-            y: 200,
+            x: 60,
+            y: 0,
             width: 50,
             height: 50,
             dy: 0,
             gravity: 0.8,
-            jumpPower: -15,
-            grounded: true
+            jumpPower: -18,
+            grounded: false
         };
 
         let obstacle = {
-            x: 900,
-            y: 210,
+            x: 0,
+            y: 0,
             width: 40,
             height: 50,
-            speed: 6
+            speed: 7
         };
 
         let score = 0;
         let gameRunning = true;
 
-        // Enable sound after user click (Chrome rule)
-        document.addEventListener("click", () => {
-            jumpSound.play().then(() => jumpSound.pause()).catch(() => { });
-        });
+        function resetPositions() {
+            dino.y = groundY - dino.height;
+            obstacle.x = canvas.width;
+            obstacle.y = groundY - obstacle.height;
+        }
+        resetPositions();
 
-        document.addEventListener("keydown", function (e) {
-
-            if (e.code === "Space" && dino.grounded && gameRunning) {
+        // Jump
+        function jump() {
+            if (dino.grounded && gameRunning) {
                 dino.dy = dino.jumpPower;
                 dino.grounded = false;
-
                 jumpSound.currentTime = 0;
                 jumpSound.play();
-            }
-
-            if (e.code === "KeyR" && !gameRunning) {
+            } else if (!gameRunning) {
                 restartGame();
             }
+        }
+
+        // Controls
+        document.addEventListener("keydown", e => {
+            if (e.code === "Space") jump();
+            if (e.code === "KeyR") restartGame();
         });
 
+        document.addEventListener("touchstart", jump);
+        document.addEventListener("click", jump);
+
+        // Game logic
         function update() {
             if (!gameRunning) return;
 
             dino.dy += dino.gravity;
             dino.y += dino.dy;
 
-            if (dino.y >= 200) {
-                dino.y = 200;
+            if (dino.y >= groundY - dino.height) {
+                dino.y = groundY - dino.height;
+                dino.dy = 0;
                 dino.grounded = true;
             }
 
@@ -132,7 +153,6 @@
                 score++;
             }
 
-            // Collision
             if (
                 dino.x < obstacle.x + obstacle.width &&
                 dino.x + dino.width > obstacle.x &&
@@ -145,11 +165,12 @@
             document.getElementById("score").innerText = "Score: " + score;
         }
 
+        // Draw
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             ctx.fillStyle = "black";
-            ctx.fillRect(0, 250, canvas.width, 4);
+            ctx.fillRect(0, groundY, canvas.width, 3);
 
             ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
             ctx.drawImage(obstacleImg, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -169,11 +190,12 @@
 
         function restartGame() {
             score = 0;
-            obstacle.x = 900;
-            dino.y = 200;
             gameRunning = true;
             document.getElementById("gameOver").style.display = "none";
+            resetPositions();
         }
+
+        gameLoop();
     </script>
 
 </body>
